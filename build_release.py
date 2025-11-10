@@ -18,7 +18,19 @@ if Path("build").exists():
     shutil.rmtree("build")
 
 # Zbuduj aplikację
-os.system(f'pyinstaller --onefile --windowed --name "AmongUsModInstaller-v{VERSION}" --icon=icon.ico installer.py')
+import sys
+import subprocess
+result = subprocess.run([
+    sys.executable, "-m", "PyInstaller",
+    "--onefile",
+    "--windowed", 
+    "--name", f"AmongUsModInstaller-v{VERSION}",
+    "--add-data", "version.txt;.",
+    "installer.py"
+])
+if result.returncode != 0:
+    print("❌ Błąd podczas budowania!")
+    sys.exit(1)
 
 print(f"\n✅ Build zakończony!")
 print(f"📦 Plik: dist/AmongUsModInstaller-v{VERSION}.exe")

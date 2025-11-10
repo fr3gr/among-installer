@@ -22,8 +22,7 @@ import sys
 import subprocess
 result = subprocess.run([
     sys.executable, "-m", "PyInstaller",
-    "--onefile",
-    "--windowed", 
+    "--windowed",
     "--name", f"AmongUsModInstaller-v{VERSION}",
     "--add-data", "version.txt;.",
     "installer.py"

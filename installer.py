@@ -19,7 +19,7 @@ import subprocess
 
 # Wersja aplikacji
 VERSION = "1.0.0"
-GITHUB_REPO = "TwojaNazwa/among-installer"  # Zmień na swoje repo
+GITHUB_REPO = "fr3gr/among-installer"  # Zmień na swoje repo
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
 

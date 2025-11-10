@@ -834,7 +834,7 @@ class InstallerGUI:
         """Aktualizuje UI paska postępu"""
         self.progress_label.config(text=message)
         self.progress_bar['value'] = percent
-        self.window.update()
+        self.window.update_idletasks()
     
     def on_install_complete(self, success: bool):
         """Callback po zakończeniu instalacji"""

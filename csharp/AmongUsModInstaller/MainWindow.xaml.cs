@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Windows;
 using Microsoft.Win32;
 using System.Diagnostics;
+using System.Linq;
 
 namespace AmongUsModInstaller;
 
@@ -10,6 +11,7 @@ public partial class MainWindow : Window
 {
     private string? gamePath;
     private string? gameVersion;
+    private List<(string path, string version)> foundGames = new();
 
     public MainWindow()
     {
@@ -59,46 +61,41 @@ public partial class MainWindow : Window
     {
         Dispatcher.Invoke(() => StatusText.Text = "Szukanie gry...");
 
-        // Sprawdź Steam registry
-        gamePath = GetSteamPath();
-        
-        if (gamePath == null)
-        {
-            // Sprawdź typowe lokalizacje
-            string[] commonPaths = [
-                @"C:\Program Files (x86)\Steam\steamapps\common\Among Us",
-                @"D:\Steam\steamapps\common\Among Us",
-                @"C:\Program Files\Epic Games\AmongUs"
-            ];
+        foundGames.Clear();
 
-            foreach (var path in commonPaths)
+        // Sprawdź wszystkie ścieżki Steam
+        FindAllSteamInstallations();
+        
+        // Sprawdź typowe lokalizacje Epic/MSStore
+        string[] commonPaths = [
+            @"C:\Program Files\Epic Games\AmongUs",
+            @"D:\Epic Games\AmongUs",
+            @"E:\Epic Games\AmongUs",
+            @"C:\Program Files\WindowsApps"
+        ];
+
+        foreach (var path in commonPaths)
+        {
+            if (VerifyGameFolder(path))
             {
-                if (VerifyGameFolder(path))
+                var version = DetectGameVersion(path);
+                if (!foundGames.Any(g => g.path == path))
                 {
-                    gamePath = path;
-                    break;
+                    foundGames.Add((path, version));
                 }
             }
         }
 
-        if (gamePath != null)
+        // Jeśli znaleziono wiele instalacji, pozwól wybrać
+        if (foundGames.Count > 1)
         {
-            gameVersion = DetectGameVersion(gamePath);
-            Dispatcher.Invoke(() =>
-            {
-                StatusText.Text = "✓ Gra znaleziona!";
-                StatusText.Foreground = System.Windows.Media.Brushes.Green;
-                VersionText.Text = gameVersion switch
-                {
-                    "steam" => "Wersja: Steam / Itch.io",
-                    "epic" => "Wersja: Epic Games",
-                    "msstore" => "Wersja: Microsoft Store",
-                    _ => $"Wersja: {gameVersion}"
-                };
-                PathText.Text = gamePath;
-                AutoInstallBtn.IsEnabled = true;
-                ManualInstallBtn.IsEnabled = true;
-            });
+            Dispatcher.Invoke(() => ShowGameSelectionDialog());
+        }
+        else if (foundGames.Count == 1)
+        {
+            gamePath = foundGames[0].path;
+            gameVersion = foundGames[0].version;
+            Dispatcher.Invoke(() => UpdateUIWithFoundGame());
         }
         else
         {
@@ -111,7 +108,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private string? GetSteamPath()
+    private void FindAllSteamInstallations()
     {
         try
         {
@@ -127,7 +124,9 @@ public partial class MainWindow : Window
                     // Sprawdź główną lokalizację Steam
                     var amongUsPath = Path.Combine(installPath, "steamapps", "common", "Among Us");
                     if (VerifyGameFolder(amongUsPath))
-                        return amongUsPath;
+                    {
+                        foundGames.Add((amongUsPath, "steam"));
+                    }
                     
                     // Sprawdź dodatkowe biblioteki Steam
                     var libraryFolders = Path.Combine(installPath, "steamapps", "libraryfolders.vdf");
@@ -143,8 +142,10 @@ public partial class MainWindow : Window
                                 {
                                     var libraryPath = pathMatch.Groups[1].Value.Replace("\\\\", "\\");
                                     var libraryAmongUs = Path.Combine(libraryPath, "steamapps", "common", "Among Us");
-                                    if (VerifyGameFolder(libraryAmongUs))
-                                        return libraryAmongUs;
+                                    if (VerifyGameFolder(libraryAmongUs) && !foundGames.Any(g => g.path == libraryAmongUs))
+                                    {
+                                        foundGames.Add((libraryAmongUs, "steam"));
+                                    }
                                 }
                             }
                         }
@@ -153,7 +154,58 @@ public partial class MainWindow : Window
             }
         }
         catch { }
-        return null;
+    }
+
+    private void ShowGameSelectionDialog()
+    {
+        var message = "Znaleziono wiele instalacji Among Us:\n\n";
+        for (int i = 0; i < foundGames.Count; i++)
+        {
+            var (path, version) = foundGames[i];
+            var versionName = version switch
+            {
+                "steam" => "Steam / Itch.io",
+                "epic" => "Epic Games",
+                "msstore" => "Microsoft Store",
+                _ => version
+            };
+            message += $"{i + 1}. {versionName}\n   {path}\n\n";
+        }
+        message += "Wybierz numer instalacji (1-" + foundGames.Count + "):";
+
+        var input = Microsoft.VisualBasic.Interaction.InputBox(message, "Wybierz instalację", "1");
+        
+        if (int.TryParse(input, out int choice) && choice >= 1 && choice <= foundGames.Count)
+        {
+            gamePath = foundGames[choice - 1].path;
+            gameVersion = foundGames[choice - 1].version;
+            UpdateUIWithFoundGame();
+        }
+        else
+        {
+            // Jeśli anulowano lub zły wybór, użyj pierwszej
+            gamePath = foundGames[0].path;
+            gameVersion = foundGames[0].version;
+            UpdateUIWithFoundGame();
+        }
+    }
+
+    private void UpdateUIWithFoundGame()
+    {
+        StatusText.Text = foundGames.Count > 1 
+            ? $"✓ Znaleziono {foundGames.Count} instalacje - wybrano:" 
+            : "✓ Gra znaleziona!";
+        StatusText.Foreground = System.Windows.Media.Brushes.Green;
+        VersionText.Text = gameVersion switch
+        {
+            "steam" => "Wersja: Steam / Itch.io",
+            "epic" => "Wersja: Epic Games",
+            "msstore" => "Wersja: Microsoft Store",
+            _ => $"Wersja: {gameVersion}"
+        };
+        PathText.Text = gamePath;
+        AutoInstallBtn.IsEnabled = true;
+        ManualInstallBtn.IsEnabled = true;
     }
 
     private bool VerifyGameFolder(string path)

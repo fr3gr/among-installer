@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AmongUsModInstaller")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5c33404afa35229a31f49e6090e7a50e14f71f26")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c3403cbcc0e29181a3852b6f714d045ab1d2594b")]
 [assembly: System.Reflection.AssemblyProductAttribute("AmongUsModInstaller")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AmongUsModInstaller")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

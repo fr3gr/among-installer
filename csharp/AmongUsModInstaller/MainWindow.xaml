@@ -1,7 +1,7 @@
 ﻿<Window x:Class="AmongUsModInstaller.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Among Us Mod Installer v1.1.0" Height="500" Width="600"
+        Title="Among Us Mod Installer v1.2.0" Height="550" Width="600"
         ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen">
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -38,12 +38,27 @@
                     Background="#4CAF50" Foreground="White"
                     Click="AutoInstallBtn_Click" IsEnabled="False"
                     Margin="0,5"/>
-            <Button x:Name="ManualInstallBtn" Content="Instaluj mod (folder lub ZIP)" 
+            <Button x:Name="ManualInstallBtn" Content="📦 Instaluj mod (folder lub ZIP)" 
                     Height="40" FontSize="12"
                     Click="ManualInstallBtn_Click" IsEnabled="False"
                     Margin="0,5"/>
-            <Button Content="Wybierz folder gry ręcznie" 
-                    Height="40" FontSize="12"
+            
+            <!-- Nowe przyciski -->
+            <StackPanel Orientation="Horizontal" Margin="0,5">
+                <Button x:Name="UninstallBtn" Content="🗑️ Odinstaluj mody" 
+                        Height="35" FontSize="11" Width="195"
+                        Background="#f44336" Foreground="White"
+                        Click="UninstallBtn_Click" IsEnabled="False"
+                        Margin="0,0,5,0"/>
+                <Button x:Name="RestoreBtn" Content="♻️ Przywróć backup" 
+                        Height="35" FontSize="11" Width="195"
+                        Background="#2196F3" Foreground="White"
+                        Click="RestoreBtn_Click" IsEnabled="False"
+                        Margin="5,0,0,0"/>
+            </StackPanel>
+            
+            <Button Content="📁 Wybierz folder gry ręcznie" 
+                    Height="35" FontSize="12"
                     Click="SelectFolderBtn_Click"
                     Margin="0,5"/>
         </StackPanel>

@@ -21,6 +21,10 @@ public partial class MainWindow : Window
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        // Wyczyść stare logi
+        Logger.CleanOldLogs();
+        Logger.Log("=== Aplikacja uruchomiona ===");
+        
         // Sprawdź aktualizacje
         CheckForUpdates();
         
@@ -206,6 +210,13 @@ public partial class MainWindow : Window
         PathText.Text = gamePath;
         AutoInstallBtn.IsEnabled = true;
         ManualInstallBtn.IsEnabled = true;
+        
+        // Włącz przyciski backup/uninstall jeśli są mody
+        if (!string.IsNullOrEmpty(gamePath))
+        {
+            UninstallBtn.IsEnabled = BackupManager.HasModsInstalled(gamePath);
+            RestoreBtn.IsEnabled = BackupManager.GetAvailableBackups().Length > 0;
+        }
     }
 
     private bool VerifyGameFolder(string path)
@@ -324,6 +335,20 @@ public partial class MainWindow : Window
     {
         try
         {
+            Logger.Log($"Rozpoczęcie instalacji moda z: {modFolder}");
+            
+            // Utwórz backup przed instalacją
+            UpdateProgress("Tworzenie backupu...", 10);
+            string? backupPath = BackupManager.CreateBackup(gamePath!);
+            if (backupPath != null)
+            {
+                Logger.Log($"Utworzono backup: {backupPath}");
+            }
+            else
+            {
+                Logger.Log("Brak plików do backupu (czysta instalacja)");
+            }
+            
             UpdateProgress("Kopiowanie plików...", 20);
             
             var files = Directory.GetFiles(modFolder, "*", SearchOption.AllDirectories);
@@ -412,6 +437,140 @@ public partial class MainWindow : Window
         {
             ProgressText.Text = message;
             ProgressBar.Value = percent;
+        });
+    }
+
+    private async void UninstallBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(gamePath))
+        {
+            MessageBox.Show("Nie wykryto ścieżki gry!", "Błąd", 
+                          MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        if (!BackupManager.HasModsInstalled(gamePath))
+        {
+            MessageBox.Show("Brak zainstalowanych modów do usunięcia.", "Informacja", 
+                          MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var result = MessageBox.Show(
+            "Czy na pewno chcesz odinstalować mody?\n\nUtworzony zostanie backup przed usunięciem.",
+            "Potwierdzenie",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result != MessageBoxResult.Yes) return;
+
+        UninstallBtn.IsEnabled = false;
+        Logger.Log("Rozpoczęcie odinstalowywania modów");
+
+        await Task.Run(() =>
+        {
+            UpdateProgress("Tworzenie backupu...", 30);
+            BackupManager.CreateBackup(gamePath);
+
+            UpdateProgress("Usuwanie modów...", 60);
+            bool success = BackupManager.UninstallMods(gamePath);
+
+            Dispatcher.Invoke(() =>
+            {
+                if (success)
+                {
+                    MessageBox.Show("Mody zostały pomyślnie odinstalowane!", "Sukces", 
+                                  MessageBoxButton.OK, MessageBoxImage.Information);
+                    Logger.Log("Mody odinstalowane pomyślnie");
+                }
+                else
+                {
+                    MessageBox.Show("Wystąpił problem podczas odinstalowywania.", "Błąd", 
+                                  MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+
+                UninstallBtn.IsEnabled = true;
+                ProgressBar.Value = 0;
+                ProgressText.Text = "";
+            });
+        });
+    }
+
+    private async void RestoreBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(gamePath))
+        {
+            MessageBox.Show("Nie wykryto ścieżki gry!", "Błąd", 
+                          MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        string[] backups = BackupManager.GetAvailableBackups();
+        if (backups.Length == 0)
+        {
+            MessageBox.Show("Brak dostępnych backupów.", "Informacja", 
+                          MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        // Pokazanie listy backupów do wyboru
+        string backupList = "Dostępne backupy:\n\n";
+        for (int i = 0; i < backups.Length; i++)
+        {
+            string fileName = Path.GetFileName(backups[i]);
+            backupList += $"{i + 1}. {fileName}\n";
+        }
+        backupList += "\nWpisz numer backupu do przywrócenia:";
+
+        string? input = Microsoft.VisualBasic.Interaction.InputBox(
+            backupList,
+            "Wybierz backup",
+            "1");
+
+        if (string.IsNullOrEmpty(input)) return;
+
+        if (!int.TryParse(input, out int choice) || choice < 1 || choice > backups.Length)
+        {
+            MessageBox.Show("Nieprawidłowy wybór!", "Błąd", 
+                          MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        string selectedBackup = backups[choice - 1];
+        var result = MessageBox.Show(
+            $"Przywrócić backup:\n{Path.GetFileName(selectedBackup)}?",
+            "Potwierdzenie",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result != MessageBoxResult.Yes) return;
+
+        RestoreBtn.IsEnabled = false;
+        Logger.Log($"Rozpoczęcie przywracania backupu: {selectedBackup}");
+
+        await Task.Run(() =>
+        {
+            UpdateProgress("Przywracanie backupu...", 50);
+            bool success = BackupManager.RestoreBackup(selectedBackup, gamePath);
+
+            Dispatcher.Invoke(() =>
+            {
+                if (success)
+                {
+                    MessageBox.Show("Backup został pomyślnie przywrócony!", "Sukces", 
+                                  MessageBoxButton.OK, MessageBoxImage.Information);
+                    Logger.Log("Backup przywrócony pomyślnie");
+                }
+                else
+                {
+                    MessageBox.Show("Wystąpił problem podczas przywracania.", "Błąd", 
+                                  MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+
+                RestoreBtn.IsEnabled = true;
+                ProgressBar.Value = 0;
+                ProgressText.Text = "";
+            });
         });
     }
 }

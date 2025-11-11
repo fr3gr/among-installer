@@ -1,9 +1,15 @@
-🎮 **Among Us Mod Installer v1.1.0 - Multiple Installations Support**
+🎮 **Among Us Mod Installer v1.2.0 - Backup & Recovery**
 
-## 🆕 What's New in v1.1.0:
-- **Multiple installations detection** - If you have Among Us on both Steam and Epic Games, the installer will now find both and let you choose which one to mod!
-- **Better Steam library support** - Finds all Steam libraries automatically
-- **Selection dialog** - Simple numbered dialog when multiple installations are detected
+## 🆕 What's New in v1.2.0:
+- 💾 **Automatic Backup** - Creates backup before every mod installation
+- 🗑️ **Uninstaller** - One-click mod removal
+- ♻️ **Restore from Backup** - Easily restore previous game state
+- 📝 **Logging System** - Detailed logs for troubleshooting (installer.log)
+- 🎨 **Improved UI** - Better button layout and visual indicators
+
+## Previous Updates (v1.1.0):
+- **Multiple installations detection** - Finds ALL Among Us installations
+- **Selection dialog** - Choose which installation to mod
 
 ## ✨ Features:
 - 🔍 **Smart detection** - Automatically finds ALL Among Us installations (Steam, Epic Games, Microsoft Store)

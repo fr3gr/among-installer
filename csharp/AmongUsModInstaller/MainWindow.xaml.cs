@@ -445,10 +445,15 @@ public partial class MainWindow : Window
 
     private bool ValidateBeforeInstall(long requiredSpaceBytes = 200 * 1024 * 1024)
     {
-        // 1. Sprawdź czy Among Us jest uruchomiony
+        // 1. Sprawdź czy Among Us jest uruchomiony (tylko "Among Us.exe", nie installer)
         var amongUsProcesses = Process.GetProcesses()
-            .Where(p => p.ProcessName.Contains("Among Us", StringComparison.OrdinalIgnoreCase) || 
-                       p.ProcessName.Contains("AmongUs", StringComparison.OrdinalIgnoreCase))
+            .Where(p => 
+            {
+                var name = p.ProcessName;
+                return (name.Equals("Among Us", StringComparison.OrdinalIgnoreCase) || 
+                       name.Equals("AmongUs", StringComparison.OrdinalIgnoreCase)) &&
+                       !name.Contains("Installer", StringComparison.OrdinalIgnoreCase);
+            })
             .ToList();
         
         if (amongUsProcesses.Any())

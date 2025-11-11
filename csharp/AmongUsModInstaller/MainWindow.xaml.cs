@@ -270,6 +270,12 @@ public partial class MainWindow : Window
             };
         }) ?? modFolders[0];
 
+        // Walidacja przed instalacją
+        if (!ValidateBeforeInstall())
+        {
+            return;
+        }
+
         MessageBox.Show($"Instaluję mod: {Path.GetFileName(selectedMod)}", "Rozpoczęcie instalacji", 
                        MessageBoxButton.OK, MessageBoxImage.Information);
 
@@ -289,6 +295,12 @@ public partial class MainWindow : Window
 
         if (dialog.ShowDialog() == true)
         {
+            // Walidacja przed instalacją
+            if (!ValidateBeforeInstall())
+            {
+                return;
+            }
+
             AutoInstallBtn.IsEnabled = false;
             ManualInstallBtn.IsEnabled = false;
             Task.Run(() => InstallModFromZip(dialog.FileName));
@@ -429,6 +441,79 @@ public partial class MainWindow : Window
                 ManualInstallBtn.IsEnabled = true;
             });
         }
+    }
+
+    private bool ValidateBeforeInstall(long requiredSpaceBytes = 200 * 1024 * 1024)
+    {
+        // 1. Sprawdź czy Among Us jest uruchomiony
+        var amongUsProcesses = Process.GetProcesses()
+            .Where(p => p.ProcessName.Contains("Among Us", StringComparison.OrdinalIgnoreCase) || 
+                       p.ProcessName.Contains("AmongUs", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        
+        if (amongUsProcesses.Any())
+        {
+            Logger.Log("BŁĄD: Among Us jest uruchomiony");
+            MessageBox.Show(
+                "Among Us jest obecnie uruchomiony!\n\nZamknij grę przed instalacją modów.",
+                "Gra uruchomiona",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return false;
+        }
+
+        // 2. Sprawdź wolne miejsce na dysku
+        try
+        {
+            var drive = new DriveInfo(Path.GetPathRoot(gamePath!)!);
+            if (drive.AvailableFreeSpace < requiredSpaceBytes)
+            {
+                var requiredMB = requiredSpaceBytes / (1024 * 1024);
+                var availableMB = drive.AvailableFreeSpace / (1024 * 1024);
+                Logger.Log($"BŁĄD: Za mało miejsca. Wymagane: {requiredMB}MB, Dostępne: {availableMB}MB");
+                MessageBox.Show(
+                    $"Za mało miejsca na dysku!\n\nWymagane: ~{requiredMB} MB\nDostępne: {availableMB} MB",
+                    "Brak miejsca",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"Błąd sprawdzania miejsca: {ex.Message}");
+        }
+
+        // 3. Sprawdź uprawnienia zapisu
+        var testFile = Path.Combine(gamePath!, ".write_test_" + Guid.NewGuid().ToString());
+        try
+        {
+            File.WriteAllText(testFile, "test");
+            File.Delete(testFile);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Logger.Log("BŁĄD: Brak uprawnień zapisu do folderu gry");
+            MessageBox.Show(
+                "Brak uprawnień zapisu do folderu gry!\n\nUruchom instalator jako administrator (PPM na exe → Uruchom jako administrator).",
+                "Brak uprawnień",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"Błąd sprawdzania uprawnień: {ex.Message}");
+            MessageBox.Show(
+                $"Nie można zapisać plików do folderu gry:\n{ex.Message}",
+                "Błąd uprawnień",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return false;
+        }
+
+        Logger.Log("Walidacja przed instalacją: OK");
+        return true;
     }
 
     private void UpdateProgress(string message, int percent)

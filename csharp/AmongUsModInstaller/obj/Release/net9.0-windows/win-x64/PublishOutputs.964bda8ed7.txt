@@ -1,3 +1,0 @@
-G:\Projekty\among-installer\csharp\AmongUsModInstaller\bin\Release\net9.0-windows\win-x64\publish\AmongUsModInstaller.pdb
-G:\Projekty\among-installer\csharp\AmongUsModInstaller\bin\Release\net9.0-windows\win-x64\publish\version.txt
-G:\Projekty\among-installer\csharp\AmongUsModInstaller\bin\Release\net9.0-windows\win-x64\publish\AmongUsModInstaller.exe

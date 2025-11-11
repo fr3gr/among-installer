@@ -1,0 +1,31 @@
+# Build artifacts
+bin/
+obj/
+*.pdb
+*.dll
+*.exe
+*.deps.json
+*.runtimeconfig.json
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.cache
+
+# Release packages (ZIP files should not be in repo)
+*.zip
+
+# NuGet
+packages/
+*.nupkg
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Version file in source should stay, but not in bin/
+!csharp/AmongUsModInstaller/version.txt

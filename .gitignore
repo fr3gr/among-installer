@@ -17,6 +17,10 @@ obj/
 # Release packages (ZIP files should not be in repo)
 *.zip
 
+# Mods folders (binary resources, not tracked in git)
+mods_steam/
+mods_epic/
+
 # NuGet
 packages/
 *.nupkg

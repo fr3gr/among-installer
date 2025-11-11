@@ -1,0 +1,365 @@
+﻿using System.IO;
+using System.IO.Compression;
+using System.Windows;
+using Microsoft.Win32;
+using System.Diagnostics;
+
+namespace AmongUsModInstaller;
+
+public partial class MainWindow : Window
+{
+    private string? gamePath;
+    private string? gameVersion;
+
+    public MainWindow()
+    {
+        InitializeComponent();
+        Loaded += MainWindow_Loaded;
+    }
+
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        // Sprawdź aktualizacje
+        CheckForUpdates();
+        
+        await Task.Run(() => FindGame());
+    }
+    
+    private async void CheckForUpdates()
+    {
+        try
+        {
+            var result = await Updater.CheckForUpdates();
+            if (result.HasValue && result.Value.hasUpdate)
+            {
+                var answer = MessageBox.Show(
+                    $"Dostępna jest nowa wersja: {result.Value.latestVersion}\nObecna wersja: {Updater.GetCurrentVersion()}\n\nCzy chcesz zaktualizować teraz?",
+                    "Aktualizacja dostępna",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+                
+                if (answer == MessageBoxResult.Yes)
+                {
+                    var success = await Updater.DownloadAndInstallUpdate(
+                        result.Value.downloadUrl,
+                        status => Dispatcher.Invoke(() => StatusText.Text = status));
+                    
+                    if (!success)
+                    {
+                        MessageBox.Show("Nie udało się zainstalować aktualizacji.", "Błąd", 
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+        }
+        catch { }
+    }
+
+    private void FindGame()
+    {
+        Dispatcher.Invoke(() => StatusText.Text = "Szukanie gry...");
+
+        // Sprawdź Steam registry
+        gamePath = GetSteamPath();
+        
+        if (gamePath == null)
+        {
+            // Sprawdź typowe lokalizacje
+            string[] commonPaths = [
+                @"C:\Program Files (x86)\Steam\steamapps\common\Among Us",
+                @"D:\Steam\steamapps\common\Among Us",
+                @"C:\Program Files\Epic Games\AmongUs"
+            ];
+
+            foreach (var path in commonPaths)
+            {
+                if (VerifyGameFolder(path))
+                {
+                    gamePath = path;
+                    break;
+                }
+            }
+        }
+
+        if (gamePath != null)
+        {
+            gameVersion = DetectGameVersion(gamePath);
+            Dispatcher.Invoke(() =>
+            {
+                StatusText.Text = "✓ Gra znaleziona!";
+                StatusText.Foreground = System.Windows.Media.Brushes.Green;
+                VersionText.Text = gameVersion switch
+                {
+                    "steam" => "Wersja: Steam / Itch.io",
+                    "epic" => "Wersja: Epic Games",
+                    "msstore" => "Wersja: Microsoft Store",
+                    _ => $"Wersja: {gameVersion}"
+                };
+                PathText.Text = gamePath;
+                AutoInstallBtn.IsEnabled = true;
+                ManualInstallBtn.IsEnabled = true;
+            });
+        }
+        else
+        {
+            Dispatcher.Invoke(() =>
+            {
+                StatusText.Text = "✗ Nie znaleziono gry";
+                StatusText.Foreground = System.Windows.Media.Brushes.Red;
+                PathText.Text = "Użyj przycisku poniżej aby wybrać folder ręcznie";
+            });
+        }
+    }
+
+    private string? GetSteamPath()
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Valve\Steam") 
+                         ?? Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Valve\Steam")
+                         ?? Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
+            
+            if (key != null)
+            {
+                var installPath = key.GetValue("InstallPath") as string;
+                if (installPath != null)
+                {
+                    // Sprawdź główną lokalizację Steam
+                    var amongUsPath = Path.Combine(installPath, "steamapps", "common", "Among Us");
+                    if (VerifyGameFolder(amongUsPath))
+                        return amongUsPath;
+                    
+                    // Sprawdź dodatkowe biblioteki Steam
+                    var libraryFolders = Path.Combine(installPath, "steamapps", "libraryfolders.vdf");
+                    if (File.Exists(libraryFolders))
+                    {
+                        var lines = File.ReadAllLines(libraryFolders);
+                        foreach (var line in lines)
+                        {
+                            if (line.Contains("\"path\""))
+                            {
+                                var pathMatch = System.Text.RegularExpressions.Regex.Match(line, "\"path\"\\s+\"(.+?)\"");
+                                if (pathMatch.Success)
+                                {
+                                    var libraryPath = pathMatch.Groups[1].Value.Replace("\\\\", "\\");
+                                    var libraryAmongUs = Path.Combine(libraryPath, "steamapps", "common", "Among Us");
+                                    if (VerifyGameFolder(libraryAmongUs))
+                                        return libraryAmongUs;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    private bool VerifyGameFolder(string path)
+    {
+        return File.Exists(Path.Combine(path, "Among Us.exe")) || 
+               File.Exists(Path.Combine(path, "GameAssembly.dll"));
+    }
+
+    private string DetectGameVersion(string path)
+    {
+        var pathLower = path.ToLower();
+        
+        if (pathLower.Contains("steam")) return "steam";
+        if (pathLower.Contains("epic")) return "epic";
+        if (pathLower.Contains("windowsapps") || pathLower.Contains("microsoft")) return "msstore";
+        
+        if (File.Exists(Path.Combine(path, "steam_api.dll")) || 
+            File.Exists(Path.Combine(path, "steam_api64.dll")))
+            return "steam";
+        
+        if (File.Exists(Path.Combine(path, ".egstore")))
+            return "epic";
+        
+        return "steam";
+    }
+
+    private async void AutoInstallBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var currentDir = AppDomain.CurrentDomain.BaseDirectory;
+        var modFolders = Directory.GetDirectories(currentDir)
+            .Where(d => !Path.GetFileName(d).StartsWith(".") && 
+                       !Path.GetFileName(d).StartsWith("_"))
+            .ToList();
+
+        if (modFolders.Count == 0)
+        {
+            MessageBox.Show("Nie znaleziono modów w folderze aplikacji!", "Błąd", 
+                          MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        // Auto-wybór based on version
+        var selectedMod = modFolders.FirstOrDefault(m =>
+        {
+            var name = Path.GetFileName(m).ToLower();
+            return gameVersion switch
+            {
+                "steam" => name.Contains("steam") || name.Contains("itch") || name.Contains("x86"),
+                "epic" or "msstore" => name.Contains("epic") || name.Contains("msstore") || name.Contains("x64"),
+                _ => false
+            };
+        }) ?? modFolders[0];
+
+        MessageBox.Show($"Instaluję mod: {Path.GetFileName(selectedMod)}", "Rozpoczęcie instalacji", 
+                       MessageBoxButton.OK, MessageBoxImage.Information);
+
+        AutoInstallBtn.IsEnabled = false;
+        ManualInstallBtn.IsEnabled = false;
+
+        await Task.Run(() => InstallMod(selectedMod));
+    }
+
+    private void ManualInstallBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "ZIP files (*.zip)|*.zip|All files (*.*)|*.*",
+            Title = "Wybierz plik ZIP z modem"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            AutoInstallBtn.IsEnabled = false;
+            ManualInstallBtn.IsEnabled = false;
+            Task.Run(() => InstallModFromZip(dialog.FileName));
+        }
+    }
+
+    private void SelectFolderBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Wybierz folder Among Us"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            var path = dialog.FolderName;
+            if (VerifyGameFolder(path))
+            {
+                gamePath = path;
+                gameVersion = DetectGameVersion(path);
+                
+                StatusText.Text = "✓ Gra znaleziona!";
+                StatusText.Foreground = System.Windows.Media.Brushes.Green;
+                VersionText.Text = gameVersion switch
+                {
+                    "steam" => "Wersja: Steam / Itch.io",
+                    "epic" => "Wersja: Epic Games",
+                    "msstore" => "Wersja: Microsoft Store",
+                    _ => $"Wersja: {gameVersion}"
+                };
+                PathText.Text = gamePath;
+                AutoInstallBtn.IsEnabled = true;
+                ManualInstallBtn.IsEnabled = true;
+            }
+            else
+            {
+                MessageBox.Show("Wybrany folder nie zawiera gry Among Us!", "Błąd", 
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+    }
+
+    private void InstallMod(string modFolder)
+    {
+        try
+        {
+            UpdateProgress("Kopiowanie plików...", 20);
+            
+            var files = Directory.GetFiles(modFolder, "*", SearchOption.AllDirectories);
+            for (int i = 0; i < files.Length; i++)
+            {
+                var file = files[i];
+                var relativePath = Path.GetRelativePath(modFolder, file);
+                var destFile = Path.Combine(gamePath!, relativePath);
+                
+                Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
+                File.Copy(file, destFile, true);
+                
+                UpdateProgress($"Kopiowanie: {relativePath}", 20 + (i * 70 / files.Length));
+            }
+            
+            UpdateProgress("Instalacja zakończona!", 100);
+            Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show("Mod został pomyślnie zainstalowany!", "Sukces", 
+                              MessageBoxButton.OK, MessageBoxImage.Information);
+                AutoInstallBtn.IsEnabled = true;
+                ManualInstallBtn.IsEnabled = true;
+                ProgressBar.Value = 0;
+                ProgressText.Text = "";
+            });
+        }
+        catch (Exception ex)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show($"Błąd: {ex.Message}", "Błąd instalacji", 
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+                AutoInstallBtn.IsEnabled = true;
+                ManualInstallBtn.IsEnabled = true;
+            });
+        }
+    }
+
+    private void InstallModFromZip(string zipPath)
+    {
+        try
+        {
+            UpdateProgress("Rozpakowywanie...", 20);
+            
+            using var archive = ZipFile.OpenRead(zipPath);
+            var entries = archive.Entries.ToList();
+            
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var entry = entries[i];
+                if (string.IsNullOrEmpty(entry.Name)) continue;
+                
+                var destPath = Path.Combine(gamePath!, entry.FullName);
+                Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+                entry.ExtractToFile(destPath, true);
+                
+                UpdateProgress($"Rozpakowywanie: {entry.Name}", 20 + (i * 70 / entries.Count));
+            }
+            
+            UpdateProgress("Instalacja zakończona!", 100);
+            Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show("Mod został pomyślnie zainstalowany!", "Sukces", 
+                              MessageBoxButton.OK, MessageBoxImage.Information);
+                AutoInstallBtn.IsEnabled = true;
+                ManualInstallBtn.IsEnabled = true;
+                ProgressBar.Value = 0;
+                ProgressText.Text = "";
+            });
+        }
+        catch (Exception ex)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show($"Błąd: {ex.Message}", "Błąd instalacji", 
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+                AutoInstallBtn.IsEnabled = true;
+                ManualInstallBtn.IsEnabled = true;
+            });
+        }
+    }
+
+    private void UpdateProgress(string message, int percent)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            ProgressText.Text = message;
+            ProgressBar.Value = percent;
+        });
+    }
+}

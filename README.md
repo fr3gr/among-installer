@@ -1,65 +1,127 @@
-# Among Us Mod Installer
+# Among Us Mod Installer# Among Us Mod Installer
 
-Prosty i szybki installer modów do Among Us, który automatycznie lokalizuje folder gry na Twoim komputerze i instaluje wybrany mod.
 
-## 🎯 Funkcje
 
-- **🔄 Automatyczne aktualizacje** - sprawdza i instaluje nowe wersje przy starcie
-- **✨ W pełni automatyczna instalacja** - wykrywa wersję gry i instaluje odpowiedni mod bez pytań!
-- **Automatyczne wykrywanie gry** - przeszukuje typowe lokalizacje (Steam, Epic Games, Microsoft Store)
-- **Wykrywanie wersji gry** - automatycznie rozpoznaje Steam/Itch (x86) vs Epic/MSStore (x64)
-- **Obsługa Steam Registry** - sprawdza rejestr Windows aby znaleźć instalację Steam
+Automatyczny instalator modów do gry Among Us z obsługą wszystkich wersji gry.Prosty i szybki installer modów do Among Us, który automatycznie lokalizuje folder gry na Twoim komputerze i instaluje wybrany mod.
+
+
+
+## Funkcje## 🎯 Funkcje
+
+
+
+- 🔍 **Automatyczne wykrywanie gry** - znajduje Among Us na Steam, Epic Games i Microsoft Store- **🔄 Automatyczne aktualizacje** - sprawdza i instaluje nowe wersje przy starcie
+
+- 📦 **Obsługa wielu wersji** - automatycznie wybiera odpowiedni mod dla Steam/Itch (x86) lub Epic/MSStore (x64)- **✨ W pełni automatyczna instalacja** - wykrywa wersję gry i instaluje odpowiedni mod bez pytań!
+
+- 🚀 **Szybka instalacja** - jeden klik i mod jest zainstalowany- **Automatyczne wykrywanie gry** - przeszukuje typowe lokalizacje (Steam, Epic Games, Microsoft Store)
+
+- 📥 **Instalacja ręczna** - możliwość instalacji własnych modów z pliku ZIP- **Wykrywanie wersji gry** - automatycznie rozpoznaje Steam/Itch (x86) vs Epic/MSStore (x64)
+
+- 🔄 **Auto-update** - automatyczne sprawdzanie i instalowanie aktualizacji- **Obsługa Steam Registry** - sprawdza rejestr Windows aby znaleźć instalację Steam
+
 - **Interfejs graficzny** - prosty i intuicyjny GUI z paskiem postępu
-- **Instalacja z folderu lub ZIP** - obsługuje zarówno rozpakowane mody jak i archiwa
+
+## Jak używać- **Instalacja z folderu lub ZIP** - obsługuje zarówno rozpakowane mody jak i archiwa
+
 - **Smart auto-wybór** - automatycznie znajduje i instaluje właściwy mod dla Twojej wersji
-- **Ręczny wybór folderu** - jeśli automatyczne wykrywanie zawiedzie, możesz wybrać folder ręcznie
-- **Pasek postępu** - śledzenie postępu pobierania i instalacji
-- **Portable** - nie wymaga instalacji, pojedynczy plik `.exe`
+
+1. Pobierz najnowszą wersję z [Releases](https://github.com/fr3gr/among-installer/releases)- **Ręczny wybór folderu** - jeśli automatyczne wykrywanie zawiedzie, możesz wybrać folder ręcznie
+
+2. Rozpakuj ZIP do dowolnego folderu- **Pasek postępu** - śledzenie postępu pobierania i instalacji
+
+3. Uruchom `AmongUsModInstaller.exe`- **Portable** - nie wymaga instalacji, pojedynczy plik `.exe`
+
+4. Kliknij **Auto-Install Mod**
 
 ## 📋 Wymagania
 
+### Instalacja ręczna
+
 - Windows (program używa rejestru Windows i ścieżek specyficznych dla Windows)
-- Python 3.7+
-- Biblioteka `requests`
 
-## � Pobieranie
+Jeśli chcesz zainstalować własny mod:- Python 3.7+
 
-### Dla użytkowników (zalecane):
+1. Kliknij **Manual Install (ZIP)**- Biblioteka `requests`
+
+2. Wybierz plik ZIP z modem
+
+3. Instalator automatycznie rozpozna wersję gry i zainstaluje mod## � Pobieranie
+
+
+
+## Wymagania### Dla użytkowników (zalecane):
+
 Pobierz najnowszą wersję z [GitHub Releases](https://github.com/TwojaNazwa/among-installer/releases/latest)
 
-1. Przejdź do zakładki **Releases**
-2. Pobierz plik `AmongUsModInstaller-vX.X.X.exe`
+- Windows 10/11 64-bit
+
+- .NET 9.0 Runtime (instalator automatycznie poprosi o pobranie jeśli nie jest zainstalowany)1. Przejdź do zakładki **Releases**
+
+- Among Us zainstalowany na Steam, Epic Games lub Microsoft Store2. Pobierz plik `AmongUsModInstaller-vX.X.X.exe`
+
 3. Uruchom - gotowe! Nie wymaga instalacji.
+
+## Zawartość paczki
 
 ### Dla deweloperów:
 
-1. Sklonuj lub pobierz to repozytorium
-2. Zainstaluj wymagane pakiety:
-
-```powershell
-pip install -r requirements.txt
 ```
+
+AmongUsModInstaller.exe  - Główny program1. Sklonuj lub pobierz to repozytorium
+
+mods_steam/              - Mody dla wersji Steam/Itch (x86)2. Zainstaluj wymagane pakiety:
+
+mods_epic/               - Mody dla wersji Epic/MSStore (x64)
+
+version.txt              - Wersja aplikacji```powershell
+
+```pip install -r requirements.txt
+
+```
+
+## Wspierane wersje Among Us
 
 3. Uruchom ze źródeł:
-```powershell
-python installer.py
-```
 
-## 💻 Użycie
+- **Steam / Itch.io** - wersja 32-bit (x86)```powershell
 
-### 🚀 Szybki Start (Najprostszy sposób!)
+- **Epic Games Store** - wersja 64-bit (x64)python installer.py
 
-1. **Wrzuć mody** do tego samego folderu co `installer.py`:
-   ```
+- **Microsoft Store** - wersja 64-bit (x64)```
+
+
+
+## Budowanie ze źródeł## 💻 Użycie
+
+
+
+```bash### 🚀 Szybki Start (Najprostszy sposób!)
+
+cd csharp/AmongUsModInstaller
+
+dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true1. **Wrzuć mody** do tego samego folderu co `installer.py`:
+
+```   ```
+
    among-installer\
-   ├── installer.py
+
+## Licencja   ├── installer.py
+
    ├── TouMira-v1.3.1-x64-epic-msstore\    (dla Epic/MSStore)
-   └── TouMira-v1.3.1-x86-steam-itch.zip   (dla Steam/Itch)
+
+MIT License - Zobacz [LICENSE](LICENSE) dla szczegółów.   └── TouMira-v1.3.1-x86-steam-itch.zip   (dla Steam/Itch)
+
    ```
+
+## Credits
 
 2. **Uruchom program**:
-   ```powershell
-   python installer.py
+
+- Mody: TouMira   ```powershell
+
+- Installer: fr3gr   python installer.py
+
    ```
 
 3. **Kliknij "🎯 Auto-wybór moda"** - i to wszystko!
